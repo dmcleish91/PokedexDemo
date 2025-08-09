@@ -9,17 +9,33 @@ import Foundation
 
 @MainActor
 final class PokemonViewModel: ObservableObject {
-    private let pokemonService = PokemonService()
+    private let pokemonService: PokemonService
+    private var searchTask: Task<Void, Never>?
     
-    @Published var pokemonList: [Pokemon] = []
+    @Published var pokemonList: [Pokemon] = [] {
+        didSet {
+            updateFilteredPokemon()
+        }
+    }
     @Published var pokemonDetails: [Int: DetailPokemon] = [:]
-    @Published var searchText = ""
+    @Published var searchText = "" {
+        didSet {
+            searchTask?.cancel()
+            searchTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                if !Task.isCancelled {
+                    updateFilteredPokemon()
+                }
+            }
+        }
+    }
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var filteredPokemon: [Pokemon] = []
     
-    var filteredPokemon: [Pokemon] {
-        return searchText.isEmpty ? pokemonList : pokemonList.filter { pokemon in
-            pokemon.name.localizedCaseInsensitiveContains(searchText)
+    private func updateFilteredPokemon() {
+        filteredPokemon = searchText.isEmpty ? pokemonList : pokemonList.filter {
+            $0.name.localizedCaseInsensitiveContains(searchText)
         }
     }
     
@@ -36,17 +52,16 @@ final class PokemonViewModel: ObservableObject {
         isLoading = false
     }
     
-    func loadDetails(for pokemon: Pokemon) async {
-        let id = pokemon.pokemonId
-        
-        if pokemonDetails[id] != nil { return }
-        
-        do {
-            let details = try await pokemonService.getDetailedPokemon(id: id)
-            pokemonDetails[id] = details
-        } catch {
-            errorMessage = "Failed to load details: \(error.localizedDescription)"
+    func loadDetails(id: Int) async throws -> DetailPokemon {
+        if let cached = pokemonDetails[id] {
+            return cached
         }
+        
+        let details = try await pokemonService.getDetailedPokemon(id: id)
+        
+        pokemonDetails[id] = details
+        
+        return details
     }
     
     
@@ -55,6 +70,14 @@ final class PokemonViewModel: ObservableObject {
         let string = String(format: "%.2f", doubleValue / 10)
         
         return string
+    }
+    
+    func clearError() {
+        errorMessage = nil
+    }
+    
+    init(pokemonService: PokemonService = PokemonService()) {
+        self.pokemonService = pokemonService
     }
 }
     

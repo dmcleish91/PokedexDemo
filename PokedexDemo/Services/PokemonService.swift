@@ -8,6 +8,7 @@
 import Foundation
 
 class PokemonService {
+    private let baseURL: String = "https://pokeapi.co/api/v2"
     private let client = NetworkClient()
     
     func getPokemon() async throws -> [Pokemon] {
@@ -16,7 +17,9 @@ class PokemonService {
     }
     
     func getDetailedPokemon(id: Int) async throws -> DetailPokemon {
-        let url = URL(string: "https://pokeapi.co/api/v2/pokemon/\(id)")!
+        guard let url = URL(string: "\(baseURL)/pokemon/\(id)") else {
+            throw NetworkError.invalidURL
+        }
         return try await client.fetch(url)
     }
 }

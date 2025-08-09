@@ -8,7 +8,8 @@
 import SwiftUI
 
 struct ContentView: View {
-    @ObservedObject var viewModel = PokemonViewModel()
+    @StateObject private var viewModel = PokemonViewModel()
+    @State private var showingError = false
     
     private let adaptiveColumns = [
         GridItem(.adaptive(minimum: 150))
@@ -23,6 +24,7 @@ struct ContentView: View {
                         NavigationLink(destination: PokemonDetailView(pokemon: pokemon, viewModel: viewModel)) {
                             PokemonView(pokemon: pokemon)
                         }
+                        .accessibilityLabel("View details for \(pokemon.name)")
                     }
                 }
                 .animation(.easeIn(duration: 0.3), value: viewModel.filteredPokemon.count)
@@ -40,10 +42,13 @@ struct ContentView: View {
                 ProgressView("Loading Pokemon...")
             }
         }
-        .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
-            Button("OK") { viewModel.errorMessage = nil }
+        .alert("Error", isPresented: $showingError) {
+            Button("OK") { viewModel.clearError() }
         } message: {
             Text(viewModel.errorMessage ?? "")
+        }
+        .onChange(of: viewModel.errorMessage) { _, newValue in
+            showingError = newValue != nil
         }
     }
 }

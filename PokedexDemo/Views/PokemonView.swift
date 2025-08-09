@@ -25,10 +25,13 @@ struct PokemonView: View {
             }
             .background(.thinMaterial)
             .clipShape(Circle())
+            .accessibilityLabel("Pokemon \(pokemon.name)")
+            .accessibilityHint("Tap to view details")
             
             Text("\(pokemon.name.capitalized)")
                 .font(.system(size: 18, weight: .regular, design: .monospaced))
                 .padding(.bottom, 20)
+                .accessibilityLabel("Pokemon name: \(pokemon.name)")
         }
     }
 }

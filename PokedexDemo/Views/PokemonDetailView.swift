@@ -11,23 +11,35 @@ struct PokemonDetailView: View {
     let pokemon: Pokemon
     @ObservedObject var viewModel: PokemonViewModel
     
-    @State private var isLoading = false
-    @State private var errorMessage: String?
+    @State private var isLoadingDetails = false
+    @State private var detailsError: String?
     
     private var pokemonDetails: DetailPokemon? {
         viewModel.pokemonDetails[pokemon.pokemonId]
     }
-
+    
     var body: some View {
         VStack {
             PokemonView(pokemon: pokemon)
             
             Group {
-                if isLoading {
+                if isLoadingDetails {
                     ProgressView("Loading details...")
                         .frame(height: 100)
                 } else if let details = pokemonDetails {
                     detailsView(details)
+                } else if let error = detailsError {
+                    VStack {
+                        Text(error)
+                            .foregroundColor(.red)
+                            .multilineTextAlignment(.center)
+                        Button("Retry") {
+                            Task {
+                                await loadPokemonDetails()
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                    }
                 } else {
                     Text("No details available")
                         .foregroundColor(.secondary)
@@ -42,7 +54,7 @@ struct PokemonDetailView: View {
             await loadPokemonDetails()
         }
     }
-        
+    
     
     @ViewBuilder
     private func detailsView(_ details: DetailPokemon) -> some View {
@@ -59,11 +71,16 @@ struct PokemonDetailView: View {
     private func loadPokemonDetails() async {
         if pokemonDetails != nil { return }
         
-        isLoading = true
-        errorMessage = nil
+        isLoadingDetails = true
+        detailsError = nil
         
-        await viewModel.loadDetails(for: pokemon)
-        isLoading = false
+        do {
+            _ = try await viewModel.loadDetails(id: pokemon.pokemonId)
+        } catch {
+            detailsError = "Failed to load details: \(error.localizedDescription)"
+        }
+
+        isLoadingDetails = false
     }
 }
 
